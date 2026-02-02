@@ -302,6 +302,61 @@ footer p {
     color: #444;
 }
 
+/* Chord Library Styles */
+.chord-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.chord-btn {
+    background: #333;
+    border: none;
+    color: var(--text-primary);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: var(--font-family);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.chord-btn:hover {
+    background: #444;
+}
+
+.chord-btn.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+.chord-detail {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+}
+
+.chord-detail.visible {
+    display: flex;
+}
+
+.chord-diagram {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.chord-diagram svg {
+    max-width: 100%;
+}
+
+.chord-play-btn {
+    width: auto;
+    padding: 10px 40px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 400px) {
     #note-name {

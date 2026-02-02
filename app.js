@@ -244,6 +244,192 @@ class Metronome {
     }
 }
 
+// --- Chord Library Data ---
+const chordData = [
+    { name: "C",     frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0], startFret: 0 },
+    { name: "D",     frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2], startFret: 0 },
+    { name: "E",     frets: [0, 2, 2, 1, 0, 0],   fingers: [0, 2, 3, 1, 0, 0], startFret: 0 },
+    { name: "G",     frets: [3, 2, 0, 0, 0, 3],   fingers: [2, 1, 0, 0, 0, 3], startFret: 0 },
+    { name: "A",     frets: [-1, 0, 2, 2, 2, 0],  fingers: [0, 0, 1, 2, 3, 0], startFret: 0 },
+    { name: "Am",    frets: [-1, 0, 2, 2, 1, 0],  fingers: [0, 0, 2, 3, 1, 0], startFret: 0 },
+    { name: "Dm",    frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1], startFret: 0 },
+    { name: "Em",    frets: [0, 2, 2, 0, 0, 0],   fingers: [0, 2, 3, 0, 0, 0], startFret: 0 },
+    { name: "A7",    frets: [-1, 0, 2, 0, 2, 0],  fingers: [0, 0, 2, 0, 3, 0], startFret: 0 },
+    { name: "B7",    frets: [-1, 2, 1, 2, 0, 2],  fingers: [0, 2, 1, 3, 0, 4], startFret: 0 },
+    { name: "C7",    frets: [-1, 3, 2, 3, 1, 0],  fingers: [0, 3, 2, 4, 1, 0], startFret: 0 },
+    { name: "D7",    frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 2, 1, 3], startFret: 0 },
+    { name: "E7",    frets: [0, 2, 0, 1, 0, 0],   fingers: [0, 2, 0, 1, 0, 0], startFret: 0 },
+    { name: "G7",    frets: [3, 2, 0, 0, 0, 1],   fingers: [3, 2, 0, 0, 0, 1], startFret: 0 },
+    { name: "F",     frets: [-1, -1, 3, 2, 1, 1], fingers: [0, 0, 3, 2, 1, 1], startFret: 0 },
+    { name: "Fmaj7", frets: [-1, -1, 3, 2, 1, 0], fingers: [0, 0, 3, 2, 1, 0], startFret: 0 },
+    { name: "Cadd9", frets: [-1, 3, 2, 0, 3, 0],  fingers: [0, 2, 1, 0, 3, 0], startFret: 0 },
+];
+
+// Open string frequencies: E2, A2, D3, G3, B3, E4
+const openStringFreqs = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
+
+// --- Chord Diagram Renderer ---
+const ChordDiagram = {
+    render(chord, container) {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const numStrings = 6;
+        const numFrets = 5;
+        const stringSpacing = 25;
+        const fretSpacing = 30;
+        const leftPad = 30;
+        const topPad = 30;
+        const width = leftPad + numFrets * fretSpacing + 20;
+        const height = topPad + (numStrings - 1) * stringSpacing + 30;
+
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("width", width);
+        svg.setAttribute("height", height);
+        svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+
+        // Chord name
+        const title = document.createElementNS(svgNS, "text");
+        title.setAttribute("x", leftPad + numFrets * fretSpacing / 2);
+        title.setAttribute("y", 16);
+        title.setAttribute("text-anchor", "middle");
+        title.setAttribute("fill", "#ffffff");
+        title.setAttribute("font-size", "16");
+        title.setAttribute("font-weight", "700");
+        title.setAttribute("font-family", "Inter, sans-serif");
+        title.textContent = chord.name;
+        svg.appendChild(title);
+
+        // Nut (thick left line for open position)
+        if (chord.startFret === 0) {
+            const nut = document.createElementNS(svgNS, "line");
+            nut.setAttribute("x1", leftPad);
+            nut.setAttribute("y1", topPad);
+            nut.setAttribute("x2", leftPad);
+            nut.setAttribute("y2", topPad + (numStrings - 1) * stringSpacing);
+            nut.setAttribute("stroke", "#ffffff");
+            nut.setAttribute("stroke-width", "4");
+            svg.appendChild(nut);
+        }
+
+        // Fret lines (vertical)
+        for (let i = 0; i <= numFrets; i++) {
+            const x = leftPad + i * fretSpacing;
+            const line = document.createElementNS(svgNS, "line");
+            line.setAttribute("x1", x);
+            line.setAttribute("y1", topPad);
+            line.setAttribute("x2", x);
+            line.setAttribute("y2", topPad + (numStrings - 1) * stringSpacing);
+            line.setAttribute("stroke", "#555");
+            line.setAttribute("stroke-width", i === 0 && chord.startFret > 0 ? "2" : "1");
+            svg.appendChild(line);
+        }
+
+        // String lines (horizontal, top = high E, bottom = low E)
+        for (let i = 0; i < numStrings; i++) {
+            const y = topPad + i * stringSpacing;
+            const line = document.createElementNS(svgNS, "line");
+            line.setAttribute("x1", leftPad);
+            line.setAttribute("y1", y);
+            line.setAttribute("x2", leftPad + numFrets * fretSpacing);
+            line.setAttribute("y2", y);
+            line.setAttribute("stroke", "#888");
+            line.setAttribute("stroke-width", "1.5");
+            svg.appendChild(line);
+        }
+
+        // Finger dots, muted/open markers
+        // Visual row 0 (top) = string index 5 (high E), row 5 (bottom) = string index 0 (low E)
+        for (let i = 0; i < numStrings; i++) {
+            const row = numStrings - 1 - i;
+            const y = topPad + row * stringSpacing;
+            const fret = chord.frets[i];
+            const finger = chord.fingers[i];
+
+            if (fret === -1) {
+                // Muted string: draw "x" to the left of the nut
+                const text = document.createElementNS(svgNS, "text");
+                text.setAttribute("x", leftPad - 16);
+                text.setAttribute("y", y + 5);
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("fill", "#a1a1aa");
+                text.setAttribute("font-size", "14");
+                text.setAttribute("font-weight", "600");
+                text.setAttribute("font-family", "Inter, sans-serif");
+                text.textContent = "x";
+                svg.appendChild(text);
+            } else if (fret === 0) {
+                // Open string: draw "o" to the left of the nut
+                const circle = document.createElementNS(svgNS, "circle");
+                circle.setAttribute("cx", leftPad - 14);
+                circle.setAttribute("cy", y);
+                circle.setAttribute("r", "6");
+                circle.setAttribute("fill", "none");
+                circle.setAttribute("stroke", "#a1a1aa");
+                circle.setAttribute("stroke-width", "1.5");
+                svg.appendChild(circle);
+            } else {
+                // Fretted note: filled circle with finger number
+                const cx = leftPad + (fret - 0.5) * fretSpacing;
+                const dot = document.createElementNS(svgNS, "circle");
+                dot.setAttribute("cx", cx);
+                dot.setAttribute("cy", y);
+                dot.setAttribute("r", "10");
+                dot.setAttribute("fill", "#8257e5");
+                svg.appendChild(dot);
+
+                if (finger > 0) {
+                    const label = document.createElementNS(svgNS, "text");
+                    label.setAttribute("x", cx);
+                    label.setAttribute("y", y + 4);
+                    label.setAttribute("text-anchor", "middle");
+                    label.setAttribute("fill", "#ffffff");
+                    label.setAttribute("font-size", "11");
+                    label.setAttribute("font-weight", "600");
+                    label.setAttribute("font-family", "Inter, sans-serif");
+                    label.textContent = finger;
+                    svg.appendChild(label);
+                }
+            }
+        }
+
+        container.innerHTML = "";
+        container.appendChild(svg);
+    }
+};
+
+// --- Chord Player ---
+class ChordPlayer {
+    strum(chord) {
+        const ctx = getAudioContext();
+        ctx.resume();
+        const now = ctx.currentTime;
+        const strumDelay = 0.04; // 40ms between strings
+
+        for (let i = 0; i < 6; i++) {
+            const fret = chord.frets[i];
+            if (fret === -1) continue;
+
+            const freq = openStringFreqs[i] * Math.pow(2, fret / 12);
+            const startTime = now + i * strumDelay;
+
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = "triangle";
+            osc.frequency.value = freq;
+
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.2);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(startTime);
+            osc.stop(startTime + 1.3);
+        }
+    }
+}
+
 // --- UI Controller ---
 const ui = {
     // Tuner Elements
@@ -261,9 +447,16 @@ const ui = {
     bpmIncrease: document.getElementById('bpm-increase'),
     beatDots: document.querySelectorAll('.dot'),
 
-    // State 
+    // Chord Elements
+    chordGrid: document.getElementById('chord-grid'),
+    chordDetail: document.getElementById('chord-detail'),
+    chordDiagram: document.getElementById('chord-diagram'),
+    playChordBtn: document.getElementById('play-chord-btn'),
+
+    // State
     isTunerRunning: false,
     isMetronomeRunning: false,
+    selectedChord: null,
 
     init() {
         // Tuner Events
@@ -300,6 +493,29 @@ const ui = {
             const val = parseInt(this.bpmSlider.value) + 1;
             if (val <= 218) this.updateBpm(val);
         });
+
+        // Chord Library Events
+        chordData.forEach((chord) => {
+            const btn = document.createElement('button');
+            btn.className = 'chord-btn';
+            btn.textContent = chord.name;
+            btn.addEventListener('click', () => this.selectChord(chord, btn));
+            this.chordGrid.appendChild(btn);
+        });
+
+        this.playChordBtn.addEventListener('click', () => {
+            if (this.selectedChord) {
+                chordPlayer.strum(this.selectedChord);
+            }
+        });
+    },
+
+    selectChord(chord, btn) {
+        this.selectedChord = chord;
+        this.chordGrid.querySelectorAll('.chord-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ChordDiagram.render(chord, this.chordDiagram);
+        this.chordDetail.classList.add('visible');
     },
 
     toggleMetronome() {
@@ -385,4 +601,5 @@ const ui = {
 // Initialize
 const tuner = new Tuner();
 const metronome = new Metronome();
+const chordPlayer = new ChordPlayer();
 ui.init();

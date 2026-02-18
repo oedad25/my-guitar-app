@@ -389,7 +389,7 @@ const ChordDiagram = {
                 svg.appendChild(circle);
             } else {
                 // Fretted note: filled circle with finger number
-                const cx = leftPad + (fret - 0.5) * fretSpacing;
+                const cx = leftPad + (fret - (chord.startFret || 1) + 0.5) * fretSpacing;
                 const dot = document.createElementNS(svgNS, "circle");
                 dot.setAttribute("cx", cx);
                 dot.setAttribute("cy", y);

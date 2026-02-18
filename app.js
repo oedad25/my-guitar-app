@@ -309,6 +309,20 @@ const ChordDiagram = {
             nut.setAttribute("stroke-width", "4");
             svg.appendChild(nut);
         }
+        // Position label (e.g. "2fr") for barre chords above open position
+        if (chord.startFret > 0) {
+            const frLabel = document.createElementNS(svgNS, "text");
+            frLabel.setAttribute("x", leftPad - 20);
+            frLabel.setAttribute("y", topPad + 5);
+            frLabel.setAttribute("text-anchor", "end");
+            frLabel.setAttribute("fill", "#a1a1aa");
+            frLabel.setAttribute("font-size", "11");
+            frLabel.setAttribute("font-weight", "600");
+            frLabel.setAttribute("font-family", "Inter, sans-serif");
+            frLabel.textContent = chord.startFret + "fr";
+            svg.appendChild(frLabel);
+        }
+
 
         // Fret lines (vertical)
         for (let i = 0; i <= numFrets; i++) {

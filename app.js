@@ -260,6 +260,7 @@ const chordData = [
     { name: "Gm",    frets: [-1, 1, 0, 0, 3, 3],  fingers: [0, 1, 0, 0, 3, 4], startFret: 0 },
     { name: "Fm",    frets: [-1, -1, 3, 1, 1, 1], fingers: [0, 0, 3, 1, 1, 1], startFret: 0 },
     { name: "F#m",   frets: [2, 4, 4, 2, 2, 2],   fingers: [1, 3, 4, 1, 1, 1], startFret: 2 },
+    { name: "Abm",   frets: [4, 6, 6, 4, 4, 4],   fingers: [1, 3, 4, 1, 1, 1], startFret: 4 },
     { name: "Cm",    frets: [-1, 3, 5, 5, 4, 3],  fingers: [0, 1, 3, 4, 2, 1], startFret: 3 },
     { name: "A7",    frets: [-1, 0, 2, 0, 2, 0],  fingers: [0, 0, 2, 0, 3, 0], startFret: 0 },
     { name: "B7",    frets: [-1, 2, 1, 2, 0, 2],  fingers: [0, 2, 1, 3, 0, 4], startFret: 0 },
@@ -274,6 +275,138 @@ const chordData = [
 
 // Open string frequencies: E2, A2, D3, G3, B3, E4
 const openStringFreqs = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63];
+
+const chromaticNotes = ["C", "Db", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+const noteIndexes = {
+    "C": 0, "B#": 0,
+    "C#": 1, "Db": 1,
+    "D": 2,
+    "D#": 3, "Eb": 3,
+    "E": 4, "Fb": 4,
+    "E#": 5, "F": 5,
+    "F#": 6, "Gb": 6,
+    "G": 7,
+    "G#": 8, "Ab": 8,
+    "A": 9,
+    "A#": 10, "Bb": 10,
+    "B": 11, "Cb": 11
+};
+
+const chordQualityPattern = /^(?:m|min|maj|M|dim|aug|sus|sus2|sus4|add\d*|\d+|#\d+|b\d+|\+|-|°|ø)*$/;
+
+function transposeNote(note, semitones) {
+    const index = noteIndexes[note];
+    if (index === undefined) return note;
+    return chromaticNotes[(index + semitones + 1200) % 12];
+}
+
+function parseChordCore(core) {
+    const match = core.match(/^([A-G](?:#|b)?)([^/\s]*)(?:\/([A-G](?:#|b)?))?$/);
+    if (!match || !chordQualityPattern.test(match[2])) return null;
+
+    return {
+        root: match[1],
+        quality: match[2],
+        bass: match[3] || "",
+        name: `${match[1]}${match[2]}${match[3] ? `/${match[3]}` : ""}`
+    };
+}
+
+function parseChordToken(token) {
+    const match = token.match(/^([^A-Ga-z0-9#b]*)(.*?)([^A-Ga-z0-9#b/]*)$/);
+    if (!match || !match[2]) return null;
+
+    const chord = parseChordCore(match[2]);
+    if (!chord) return null;
+
+    return {
+        prefix: match[1],
+        suffix: match[3],
+        chord
+    };
+}
+
+function transposeChordName(chordName, semitones) {
+    const chord = parseChordCore(chordName);
+    if (!chord) return chordName;
+
+    const root = transposeNote(chord.root, semitones);
+    const bass = chord.bass ? `/${transposeNote(chord.bass, semitones)}` : "";
+    return `${root}${chord.quality}${bass}`;
+}
+
+function normalizeChordForLookup(chordName) {
+    const chord = parseChordCore(chordName);
+    if (!chord) return chordName;
+
+    const root = chromaticNotes[noteIndexes[chord.root]];
+    return `${root}${chord.quality}`;
+}
+
+function findChordByName(chordName) {
+    const normalized = normalizeChordForLookup(chordName);
+    return chordData.find(chord => chord.name === normalized);
+}
+
+function normalizeChordSearch(query) {
+    const trimmed = query.trim().replace(/\s+/g, "");
+    const match = trimmed.match(/^([a-gA-G])([#b]?)(.*)$/);
+    if (!match) return "";
+
+    const root = `${match[1].toUpperCase()}${match[2]}`;
+    return `${root}${match[3]}`;
+}
+
+function createGeneratedChord(chordName) {
+    const parsed = parseChordCore(normalizeChordSearch(chordName));
+    if (!parsed || parsed.bass) return null;
+
+    const normalizedRoot = chromaticNotes[noteIndexes[parsed.root]];
+    const quality = parsed.quality === "min" ? "m" : parsed.quality;
+    const supportedQualities = ["", "m", "7"];
+
+    if (!supportedQualities.includes(quality)) return null;
+
+    const rootIndex = noteIndexes[normalizedRoot];
+    const eShapeFret = (rootIndex - noteIndexes.E + 12) % 12;
+    const aShapeFret = (rootIndex - noteIndexes.A + 12) % 12;
+    const useAShape = aShapeFret > 0 && (eShapeFret === 0 || aShapeFret < eShapeFret);
+    const fret = useAShape ? aShapeFret : eShapeFret || 12;
+
+    const shapes = {
+        e: {
+            "": [fret, fret + 2, fret + 2, fret + 1, fret, fret],
+            "m": [fret, fret + 2, fret + 2, fret, fret, fret],
+            "7": [fret, fret + 2, fret, fret + 1, fret, fret]
+        },
+        a: {
+            "": [-1, fret, fret + 2, fret + 2, fret + 2, fret],
+            "m": [-1, fret, fret + 2, fret + 2, fret + 1, fret],
+            "7": [-1, fret, fret + 2, fret, fret + 2, fret]
+        }
+    };
+
+    const fingerings = {
+        e: {
+            "": [1, 3, 4, 2, 1, 1],
+            "m": [1, 3, 4, 1, 1, 1],
+            "7": [1, 3, 1, 2, 1, 1]
+        },
+        a: {
+            "": [0, 1, 2, 3, 4, 1],
+            "m": [0, 1, 3, 4, 2, 1],
+            "7": [0, 1, 3, 1, 4, 1]
+        }
+    };
+
+    return {
+        name: `${normalizedRoot}${quality}`,
+        frets: shapes[useAShape ? "a" : "e"][quality],
+        fingers: fingerings[useAShape ? "a" : "e"][quality],
+        startFret: fret,
+        generated: true
+    };
+}
 
 // --- Chord Diagram Renderer ---
 const ChordDiagram = {
@@ -449,6 +582,56 @@ class ChordPlayer {
             osc.stop(startTime + 1.3);
         }
     }
+
+    playChordName(chordName, delay = 0) {
+        const libraryChord = findChordByName(chordName);
+        if (libraryChord && delay === 0) {
+            this.strum(libraryChord);
+            return;
+        }
+
+        if (libraryChord) {
+            setTimeout(() => this.strum(libraryChord), delay * 1000);
+            return;
+        }
+
+        this.playSynthChord(chordName, delay);
+    }
+
+    playSynthChord(chordName, delay = 0) {
+        const chord = parseChordCore(chordName);
+        if (!chord) return;
+
+        const ctx = getAudioContext();
+        ctx.resume();
+
+        const rootIndex = noteIndexes[chord.root];
+        const rootFrequency = 130.81 * Math.pow(2, rootIndex / 12); // C3 base
+        const quality = chord.quality.toLowerCase();
+        const third = quality.startsWith("m") || quality.includes("dim") ? 3 : 4;
+        const fifth = quality.includes("dim") ? 6 : quality.includes("aug") ? 8 : 7;
+        const intervals = [0, third, fifth];
+
+        if (quality.includes("7")) intervals.push(10);
+
+        intervals.forEach((interval, index) => {
+            const startTime = ctx.currentTime + delay + index * 0.04;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.type = "triangle";
+            osc.frequency.value = rootFrequency * Math.pow(2, interval / 12);
+
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.18, startTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 1.1);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 1.2);
+        });
+    }
 }
 
 // --- UI Controller ---
@@ -469,15 +652,35 @@ const ui = {
     beatDots: document.querySelectorAll('.dot'),
 
     // Chord Elements
+    chordSearchInput: document.getElementById('chord-search-input'),
+    chordEmpty: document.getElementById('chord-empty'),
     chordGrid: document.getElementById('chord-grid'),
     chordDetail: document.getElementById('chord-detail'),
     chordDiagram: document.getElementById('chord-diagram'),
     playChordBtn: document.getElementById('play-chord-btn'),
 
+    // Song Chart Elements
+    songFileInput: document.getElementById('song-file-input'),
+    songInput: document.getElementById('song-input'),
+    sourceKeySelect: document.getElementById('source-key-select'),
+    songKeyButtons: document.getElementById('song-key-buttons'),
+    capoButtons: document.getElementById('capo-buttons'),
+    playChartBtn: document.getElementById('play-chart-btn'),
+    songChartMeta: document.getElementById('song-chart-meta'),
+    songChartOutput: document.getElementById('song-chart-output'),
+
     // State
     isTunerRunning: false,
     isMetronomeRunning: false,
     selectedChord: null,
+    generatedChord: null,
+    generatedChordBtn: null,
+    songChartText: "",
+    sourceKey: "C",
+    songKey: "C",
+    selectedCapo: 0,
+    sourceKeyWasEdited: false,
+    chartPlaybackTimers: [],
 
     init() {
         // Tuner Events
@@ -520,8 +723,21 @@ const ui = {
             const btn = document.createElement('button');
             btn.className = 'chord-btn';
             btn.textContent = chord.name;
+            btn.dataset.chordName = chord.name.toLowerCase();
             btn.addEventListener('click', () => this.selectChord(chord, btn));
             this.chordGrid.appendChild(btn);
+        });
+
+        this.generatedChordBtn = document.createElement('button');
+        this.generatedChordBtn.className = 'chord-btn generated-chord-btn';
+        this.generatedChordBtn.hidden = true;
+        this.generatedChordBtn.addEventListener('click', () => {
+            if (this.generatedChord) this.selectChord(this.generatedChord, this.generatedChordBtn);
+        });
+        this.chordGrid.appendChild(this.generatedChordBtn);
+
+        this.chordSearchInput.addEventListener('input', (event) => {
+            this.filterChordLibrary(event.target.value);
         });
 
         this.playChordBtn.addEventListener('click', () => {
@@ -529,12 +745,332 @@ const ui = {
                 chordPlayer.strum(this.selectedChord);
             }
         });
+
+        this.initSongChart();
+    },
+
+    filterChordLibrary(query) {
+        const normalizedQuery = query.trim().toLowerCase();
+        let visibleCount = 0;
+
+        this.generatedChord = null;
+        this.generatedChordBtn.hidden = true;
+
+        this.chordGrid.querySelectorAll('.chord-btn:not(.generated-chord-btn)').forEach((button) => {
+            const isMatch = button.dataset.chordName.includes(normalizedQuery);
+            button.hidden = !isMatch;
+            if (isMatch) visibleCount++;
+        });
+
+        if (normalizedQuery && visibleCount === 0) {
+            this.generatedChord = createGeneratedChord(query);
+            if (this.generatedChord) {
+                this.generatedChordBtn.textContent = this.generatedChord.name;
+                this.generatedChordBtn.title = `Generated barre shape for ${this.generatedChord.name}`;
+                this.generatedChordBtn.hidden = false;
+                visibleCount = 1;
+            }
+        }
+
+        this.chordEmpty.hidden = visibleCount > 0;
+    },
+
+    initSongChart() {
+        if (!this.songInput || !this.songKeyButtons || !this.capoButtons) return;
+
+        this.renderSongKeyButtons();
+        this.renderCapoButtons();
+        this.renderSongChart();
+
+        this.songFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                this.sourceKeyWasEdited = false;
+                this.songInput.value = reader.result;
+                this.updateSongChartText(reader.result, file.name);
+            };
+            reader.onerror = () => {
+                this.songChartMeta.textContent = "Could not read that chart file.";
+            };
+            reader.readAsText(file);
+        });
+
+        this.songInput.addEventListener('input', (event) => {
+            this.updateSongChartText(event.target.value);
+        });
+
+        this.sourceKeySelect.addEventListener('change', (event) => {
+            this.sourceKeyWasEdited = true;
+            this.sourceKey = event.target.value;
+            this.renderSongChart();
+        });
+
+        this.playChartBtn.addEventListener('click', () => {
+            if (this.chartPlaybackTimers.length > 0) {
+                this.stopChartPlayback();
+            } else {
+                this.playSongChart();
+            }
+        });
+    },
+
+    updateSongChartText(text, fileName = "") {
+        this.songChartText = text;
+        this.stopChartPlayback();
+
+        const detectedKey = this.detectSongKey(text);
+        if (detectedKey && !this.sourceKeyWasEdited) {
+            this.sourceKey = detectedKey;
+            this.songKey = detectedKey;
+            this.sourceKeySelect.value = detectedKey;
+        }
+
+        this.renderSongKeyButtons();
+        this.renderCapoButtons();
+        this.renderSongChart(fileName);
+    },
+
+    detectSongKey(text) {
+        const keyDirective = text.match(/^\s*(?:\{key:\s*([A-G](?:#|b)?)\s*\}|key\s*[:=-]\s*([A-G](?:#|b)?))/im);
+        const directedKey = keyDirective && (keyDirective[1] || keyDirective[2]);
+        if (directedKey && noteIndexes[directedKey] !== undefined) {
+            return chromaticNotes[noteIndexes[directedKey]];
+        }
+
+        const firstChord = this.extractSongChords(text)[0];
+        if (!firstChord) return null;
+
+        const parsed = parseChordCore(firstChord);
+        return parsed ? chromaticNotes[noteIndexes[parsed.root]] : null;
+    },
+
+    renderSongKeyButtons() {
+        this.songKeyButtons.innerHTML = "";
+
+        chromaticNotes.forEach((note) => {
+            const button = document.createElement('button');
+            button.type = "button";
+            button.className = "key-btn";
+            button.textContent = note;
+            button.setAttribute('aria-pressed', note === this.songKey ? "true" : "false");
+            if (note === this.songKey) button.classList.add('active');
+            button.addEventListener('click', () => {
+                this.songKey = note;
+                this.renderSongKeyButtons();
+                this.renderCapoButtons();
+                this.renderSongChart();
+            });
+            this.songKeyButtons.appendChild(button);
+        });
+    },
+
+    renderCapoButtons() {
+        this.capoButtons.innerHTML = "";
+
+        for (let capo = 0; capo <= 11; capo++) {
+            const button = document.createElement('button');
+            button.type = "button";
+            button.className = "capo-btn";
+            button.textContent = `Capo ${capo} (${transposeNote(this.songKey, -capo)})`;
+            button.setAttribute('aria-pressed', capo === this.selectedCapo ? "true" : "false");
+            if (capo === this.selectedCapo) button.classList.add('active');
+            button.addEventListener('click', () => {
+                this.selectedCapo = capo;
+                this.renderCapoButtons();
+                this.renderSongChart();
+            });
+            this.capoButtons.appendChild(button);
+        }
+    },
+
+    getSongTransposeOffset() {
+        return noteIndexes[this.songKey] - noteIndexes[this.sourceKey] - this.selectedCapo;
+    },
+
+    extractSongChords(text) {
+        const chords = [];
+
+        text.split(/\r?\n/).forEach((line) => {
+            if (this.isSongDirectiveLine(line)) return;
+
+            const bracketMatches = [...line.matchAll(/\[([^\]]+)\]/g)];
+            bracketMatches.forEach((match) => {
+                const chord = parseChordCore(match[1]);
+                if (chord) chords.push(chord.name);
+            });
+
+            if (bracketMatches.length > 0) return;
+
+            line.split(/\s+/).forEach((token) => {
+                const parsed = parseChordToken(token);
+                if (parsed) chords.push(parsed.chord.name);
+            });
+        });
+
+        return chords;
+    },
+
+    isSongDirectiveLine(line) {
+        return /^\s*\{[^}]+\}\s*$/.test(line) || /^\s*key\s*[:=-]/i.test(line);
+    },
+
+    renderSongChart(fileName = "") {
+        const text = this.songChartText.trimEnd();
+        this.songChartOutput.innerHTML = "";
+
+        if (!text) {
+            this.songChartMeta.textContent = "No chart loaded yet";
+            this.playChartBtn.disabled = true;
+            return;
+        }
+
+        const offset = this.getSongTransposeOffset();
+        const chords = this.extractSongChords(text);
+        const displayChords = chords.map(chord => transposeChordName(chord, offset));
+        const uniqueChords = [...new Set(displayChords)];
+        const playKey = transposeNote(this.songKey, -this.selectedCapo);
+        const source = fileName ? `${fileName} • ` : "";
+
+        this.songChartMeta.textContent = `${source}${displayChords.length} chords • Song key ${this.songKey} • Capo ${this.selectedCapo}, play ${playKey}`;
+        this.playChartBtn.disabled = displayChords.length === 0;
+
+        if (uniqueChords.length > 0) {
+            const summary = document.createElement('div');
+            summary.className = "song-chord-summary";
+            uniqueChords.forEach((chord) => summary.appendChild(this.createChartChordButton(chord)));
+            this.songChartOutput.appendChild(summary);
+        }
+
+        text.split(/\r?\n/).forEach((line) => {
+            const lineElement = document.createElement('div');
+            lineElement.className = "chart-line";
+            this.renderSongChartLine(line, lineElement, offset);
+            this.songChartOutput.appendChild(lineElement);
+        });
+    },
+
+    renderSongChartLine(line, container, offset) {
+        if (line.length === 0) {
+            container.appendChild(document.createTextNode("\u00a0"));
+            return;
+        }
+
+        if (this.isSongDirectiveLine(line)) {
+            const label = document.createElement('span');
+            label.className = "chart-section";
+            label.textContent = line.trim();
+            container.appendChild(label);
+            return;
+        }
+
+        const bracketPattern = /\[([^\]]+)\]/g;
+        const hasBracketChords = [...line.matchAll(bracketPattern)].some(match => parseChordCore(match[1]));
+
+        if (hasBracketChords) {
+            let cursor = 0;
+            line.replace(bracketPattern, (fullMatch, content, index) => {
+                container.appendChild(document.createTextNode(line.slice(cursor, index)));
+
+                const chord = parseChordCore(content);
+                if (chord) {
+                    container.appendChild(this.createChartChordButton(transposeChordName(chord.name, offset)));
+                } else {
+                    const label = document.createElement('span');
+                    label.className = "chart-section";
+                    label.textContent = fullMatch;
+                    container.appendChild(label);
+                }
+
+                cursor = index + fullMatch.length;
+                return fullMatch;
+            });
+            container.appendChild(document.createTextNode(line.slice(cursor)));
+            return;
+        }
+
+        line.split(/(\s+)/).forEach((part) => {
+            if (/^\s+$/.test(part)) {
+                container.appendChild(document.createTextNode(part));
+                return;
+            }
+
+            const parsed = parseChordToken(part);
+            if (!parsed) {
+                container.appendChild(document.createTextNode(part));
+                return;
+            }
+
+            if (parsed.prefix) container.appendChild(document.createTextNode(parsed.prefix));
+            container.appendChild(this.createChartChordButton(transposeChordName(parsed.chord.name, offset)));
+            if (parsed.suffix) container.appendChild(document.createTextNode(parsed.suffix));
+        });
+    },
+
+    createChartChordButton(chordName) {
+        const button = document.createElement('button');
+        button.type = "button";
+        button.className = "chart-chord";
+        button.textContent = chordName;
+        button.title = `Play ${chordName}`;
+        button.addEventListener('click', () => {
+            this.showChordFromName(chordName);
+            chordPlayer.playChordName(chordName);
+        });
+        return button;
+    },
+
+    showChordFromName(chordName) {
+        const chord = findChordByName(chordName);
+        if (!chord) return;
+
+        const button = [...this.chordGrid.querySelectorAll('.chord-btn')]
+            .find(btn => btn.textContent === chord.name);
+        this.selectChord(chord, button);
+    },
+
+    playSongChart() {
+        const chords = this.extractSongChords(this.songChartText)
+            .map(chord => transposeChordName(chord, this.getSongTransposeOffset()));
+
+        if (chords.length === 0) return;
+
+        if (this.isTunerRunning) {
+            tuner.stop();
+            this.startTunerBtn.textContent = "Start Tuner";
+            this.startTunerBtn.classList.remove('active');
+            this.isTunerRunning = false;
+        }
+
+        this.playChartBtn.textContent = "Stop Chart";
+        this.playChartBtn.classList.add('active');
+
+        chords.forEach((chord, index) => {
+            const timer = setTimeout(() => {
+                chordPlayer.playChordName(chord);
+            }, index * 900);
+            this.chartPlaybackTimers.push(timer);
+        });
+
+        const finishTimer = setTimeout(() => this.stopChartPlayback(), chords.length * 900 + 500);
+        this.chartPlaybackTimers.push(finishTimer);
+    },
+
+    stopChartPlayback() {
+        this.chartPlaybackTimers.forEach(timer => clearTimeout(timer));
+        this.chartPlaybackTimers = [];
+        if (this.playChartBtn) {
+            this.playChartBtn.textContent = "Play Chart";
+            this.playChartBtn.classList.remove('active');
+        }
     },
 
     selectChord(chord, btn) {
         this.selectedChord = chord;
         this.chordGrid.querySelectorAll('.chord-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+        if (btn) btn.classList.add('active');
         ChordDiagram.render(chord, this.chordDiagram);
         this.chordDetail.classList.add('visible');
     },

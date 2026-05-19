@@ -32,7 +32,7 @@ body {
 
 .app-container {
     width: 100%;
-    max-width: 480px;
+    max-width: 760px;
     padding: 20px;
     display: flex;
     flex-direction: column;
@@ -350,6 +350,42 @@ footer p {
 }
 
 /* Chord Library Styles */
+.chord-search {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.chord-search-label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+#chord-search-input {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: #17171b;
+    color: var(--text-primary);
+    font: inherit;
+    padding: 0 12px;
+    outline: none;
+}
+
+#chord-search-input::placeholder {
+    color: #71717a;
+}
+
+#chord-search-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(130, 87, 229, 0.18);
+}
+
 .chord-grid {
     display: flex;
     flex-wrap: wrap;
@@ -379,6 +415,30 @@ footer p {
     color: white;
 }
 
+.generated-chord-btn {
+    border: 1px solid rgba(130, 87, 229, 0.6);
+    background: rgba(130, 87, 229, 0.16);
+    color: #c4b5fd;
+}
+
+.generated-chord-btn::after {
+    content: " generated";
+    color: var(--text-secondary);
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.generated-chord-btn.active::after {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.chord-empty {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
 .chord-detail {
     display: none;
     flex-direction: column;
@@ -404,6 +464,220 @@ footer p {
     padding: 10px 40px;
 }
 
+/* Song Chart Styles */
+.song-import {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.file-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 22px;
+    border: 2px dashed #444;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.file-upload-label:hover {
+    border-color: var(--accent-color);
+    background: rgba(130, 87, 229, 0.06);
+}
+
+.file-upload-icon {
+    color: var(--accent-hover);
+    font-size: 2rem;
+    line-height: 1;
+    margin-bottom: 8px;
+}
+
+.file-upload-text {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.file-upload-hint,
+.song-paste-label,
+.control-label,
+.song-chart-meta {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.file-upload-hint {
+    margin-top: 4px;
+}
+
+.song-paste-label,
+.control-label {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+#song-input {
+    width: 100%;
+    min-height: 180px;
+    resize: vertical;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    background: #17171b;
+    color: var(--text-primary);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92rem;
+    line-height: 1.7;
+    padding: 14px;
+    outline: none;
+}
+
+#song-input:focus,
+.key-select:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(130, 87, 229, 0.18);
+}
+
+.song-controls {
+    display: grid;
+    grid-template-columns: minmax(96px, auto) 1fr;
+    gap: 12px;
+    align-items: center;
+    margin-top: 18px;
+}
+
+.key-select {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    background: #2a2a30;
+    color: var(--text-primary);
+    font: inherit;
+    font-weight: 700;
+    padding: 0 12px;
+    outline: none;
+}
+
+.key-button-grid,
+.capo-button-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.key-btn,
+.capo-btn,
+.chart-chord {
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-family);
+    font-weight: 700;
+    transition: var(--transition);
+}
+
+.key-btn,
+.capo-btn {
+    background: #333;
+    color: var(--text-primary);
+    border-radius: 8px;
+}
+
+.key-btn {
+    min-width: 42px;
+    min-height: 36px;
+    padding: 0 10px;
+}
+
+.capo-btn {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 0.8rem;
+}
+
+.key-btn:hover,
+.capo-btn:hover {
+    background: #444;
+}
+
+.key-btn.active,
+.capo-btn.active {
+    background: var(--accent-color);
+    color: #fff;
+}
+
+#play-chart-btn {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+}
+
+#play-chart-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+}
+
+.song-chart-meta {
+    margin-top: 16px;
+}
+
+.song-chart-output {
+    margin-top: 14px;
+    padding: 18px;
+    border-radius: 10px;
+    background: #17171b;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    overflow-x: auto;
+}
+
+.song-chord-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-line {
+    min-width: max-content;
+    min-height: 1.7em;
+    color: #d4d4d8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.94rem;
+    line-height: 1.7;
+    white-space: pre;
+}
+
+.chart-chord {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.2em;
+    min-height: 1.8em;
+    margin: 0 1px;
+    padding: 0 6px;
+    border-radius: 6px;
+    background: rgba(4, 211, 97, 0.14);
+    color: #7ee8a3;
+    font-size: 0.9rem;
+    vertical-align: baseline;
+}
+
+.chart-chord:hover {
+    background: rgba(4, 211, 97, 0.24);
+    color: #ffffff;
+}
+
+.chart-section {
+    color: var(--accent-hover);
+    font-weight: 700;
+}
+
 /* Responsive adjustments */
 @media (max-width: 400px) {
     #note-name {
@@ -412,5 +686,19 @@ footer p {
     
     #bpm-value {
         font-size: 3rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .song-controls {
+        grid-template-columns: 1fr;
+    }
+
+    .key-btn {
+        flex: 1 0 48px;
+    }
+
+    .capo-btn {
+        flex: 1 0 120px;
     }
 }

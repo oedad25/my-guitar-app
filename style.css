@@ -564,13 +564,15 @@ footer p {
 }
 
 .key-button-grid,
-.capo-button-grid {
+.capo-button-grid,
+.key-mode-toggle {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
 }
 
 .key-btn,
+.key-mode-toggle button,
 .capo-btn,
 .chart-chord {
     border: none;
@@ -581,10 +583,17 @@ footer p {
 }
 
 .key-btn,
+.key-mode-toggle button,
 .capo-btn {
     background: #333;
     color: var(--text-primary);
     border-radius: 8px;
+}
+
+.key-mode-toggle button {
+    min-height: 36px;
+    min-width: 84px;
+    padding: 0 14px;
 }
 
 .key-btn {
@@ -600,11 +609,13 @@ footer p {
 }
 
 .key-btn:hover,
+.key-mode-toggle button:hover,
 .capo-btn:hover {
     background: #444;
 }
 
 .key-btn.active,
+.key-mode-toggle button.active,
 .capo-btn.active {
     background: var(--accent-color);
     color: #fff;

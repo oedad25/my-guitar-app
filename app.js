@@ -300,6 +300,25 @@ function transposeNote(note, semitones) {
     return chromaticNotes[(index + semitones + 1200) % 12];
 }
 
+function formatKeyName(root, quality = "") {
+    return `${root}${quality}`;
+}
+
+function parseKeyName(keyName) {
+    const match = keyName.trim().match(/^([A-G](?:#|b)?)(?:\s*(m|min|minor|maj|major))?$/i);
+    if (!match) return null;
+
+    const root = `${match[1][0].toUpperCase()}${match[1].slice(1)}`;
+    const quality = /^(m|min|minor)$/i.test(match[2] || "") ? "m" : "";
+
+    if (noteIndexes[root] === undefined) return null;
+
+    return {
+        root: chromaticNotes[noteIndexes[root]],
+        quality
+    };
+}
+
 function parseChordCore(core) {
     const match = core.match(/^([A-G](?:#|b)?)([^/\s]*)(?:\/([A-G](?:#|b)?))?$/);
     if (!match || !chordQualityPattern.test(match[2])) return null;
@@ -663,7 +682,9 @@ const ui = {
     songFileInput: document.getElementById('song-file-input'),
     songInput: document.getElementById('song-input'),
     sourceKeySelect: document.getElementById('source-key-select'),
+    sourceKeyMode: document.getElementById('source-key-mode'),
     songKeyButtons: document.getElementById('song-key-buttons'),
+    songKeyMode: document.getElementById('song-key-mode'),
     capoButtons: document.getElementById('capo-buttons'),
     playChartBtn: document.getElementById('play-chart-btn'),
     songChartMeta: document.getElementById('song-chart-meta'),
@@ -677,7 +698,9 @@ const ui = {
     generatedChordBtn: null,
     songChartText: "",
     sourceKey: "C",
+    sourceKeyQuality: "",
     songKey: "C",
+    songKeyQuality: "",
     selectedCapo: 0,
     sourceKeyWasEdited: false,
     chartPlaybackTimers: [],
@@ -778,6 +801,7 @@ const ui = {
     initSongChart() {
         if (!this.songInput || !this.songKeyButtons || !this.capoButtons) return;
 
+        this.renderKeyModeButtons();
         this.renderSongKeyButtons();
         this.renderCapoButtons();
         this.renderSongChart();
@@ -808,6 +832,25 @@ const ui = {
             this.renderSongChart();
         });
 
+        this.sourceKeyMode.addEventListener('click', (event) => {
+            if (!event.target.matches('button')) return;
+
+            this.sourceKeyWasEdited = true;
+            this.sourceKeyQuality = event.target.dataset.quality;
+            this.renderKeyModeButtons();
+            this.renderSongChart();
+        });
+
+        this.songKeyMode.addEventListener('click', (event) => {
+            if (!event.target.matches('button')) return;
+
+            this.songKeyQuality = event.target.dataset.quality;
+            this.renderSongKeyButtons();
+            this.renderCapoButtons();
+            this.renderKeyModeButtons();
+            this.renderSongChart();
+        });
+
         this.playChartBtn.addEventListener('click', () => {
             if (this.chartPlaybackTimers.length > 0) {
                 this.stopChartPlayback();
@@ -823,28 +866,49 @@ const ui = {
 
         const detectedKey = this.detectSongKey(text);
         if (detectedKey && !this.sourceKeyWasEdited) {
-            this.sourceKey = detectedKey;
-            this.songKey = detectedKey;
-            this.sourceKeySelect.value = detectedKey;
+            this.sourceKey = detectedKey.root;
+            this.sourceKeyQuality = detectedKey.quality;
+            this.songKey = detectedKey.root;
+            this.songKeyQuality = detectedKey.quality;
+            this.sourceKeySelect.value = detectedKey.root;
         }
 
+        this.renderKeyModeButtons();
         this.renderSongKeyButtons();
         this.renderCapoButtons();
         this.renderSongChart(fileName);
     },
 
     detectSongKey(text) {
-        const keyDirective = text.match(/^\s*(?:\{key:\s*([A-G](?:#|b)?)\s*\}|key\s*[:=-]\s*([A-G](?:#|b)?))/im);
-        const directedKey = keyDirective && (keyDirective[1] || keyDirective[2]);
-        if (directedKey && noteIndexes[directedKey] !== undefined) {
-            return chromaticNotes[noteIndexes[directedKey]];
+        const keyDirective = text.match(/^\s*(?:\{key:\s*([^}]+)\}|key\s*[:=-]\s*([A-G](?:#|b)?(?:\s*(?:m|min|minor|maj|major))?))/im);
+        const directedKey = keyDirective && parseKeyName((keyDirective[1] || keyDirective[2]).trim());
+        if (directedKey) {
+            return directedKey;
         }
 
         const firstChord = this.extractSongChords(text)[0];
         if (!firstChord) return null;
 
         const parsed = parseChordCore(firstChord);
-        return parsed ? chromaticNotes[noteIndexes[parsed.root]] : null;
+        if (!parsed) return null;
+
+        return {
+            root: chromaticNotes[noteIndexes[parsed.root]],
+            quality: parsed.quality.toLowerCase().startsWith("m") ? "m" : ""
+        };
+    },
+
+    renderKeyModeButtons() {
+        this.updateKeyModeGroup(this.sourceKeyMode, this.sourceKeyQuality);
+        this.updateKeyModeGroup(this.songKeyMode, this.songKeyQuality);
+    },
+
+    updateKeyModeGroup(group, activeQuality) {
+        group.querySelectorAll('button').forEach((button) => {
+            const isActive = button.dataset.quality === activeQuality;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', isActive ? "true" : "false");
+        });
     },
 
     renderSongKeyButtons() {
@@ -854,7 +918,7 @@ const ui = {
             const button = document.createElement('button');
             button.type = "button";
             button.className = "key-btn";
-            button.textContent = note;
+            button.textContent = formatKeyName(note, this.songKeyQuality);
             button.setAttribute('aria-pressed', note === this.songKey ? "true" : "false");
             if (note === this.songKey) button.classList.add('active');
             button.addEventListener('click', () => {
@@ -872,9 +936,10 @@ const ui = {
 
         for (let capo = 0; capo <= 11; capo++) {
             const button = document.createElement('button');
+            const playKey = formatKeyName(transposeNote(this.songKey, -capo), this.songKeyQuality);
             button.type = "button";
             button.className = "capo-btn";
-            button.textContent = `Capo ${capo} (${transposeNote(this.songKey, -capo)})`;
+            button.textContent = `Capo ${capo} (${playKey})`;
             button.setAttribute('aria-pressed', capo === this.selectedCapo ? "true" : "false");
             if (capo === this.selectedCapo) button.classList.add('active');
             button.addEventListener('click', () => {
@@ -931,10 +996,11 @@ const ui = {
         const chords = this.extractSongChords(text);
         const displayChords = chords.map(chord => transposeChordName(chord, offset));
         const uniqueChords = [...new Set(displayChords)];
-        const playKey = transposeNote(this.songKey, -this.selectedCapo);
+        const songKey = formatKeyName(this.songKey, this.songKeyQuality);
+        const playKey = formatKeyName(transposeNote(this.songKey, -this.selectedCapo), this.songKeyQuality);
         const source = fileName ? `${fileName} • ` : "";
 
-        this.songChartMeta.textContent = `${source}${displayChords.length} chords • Song key ${this.songKey} • Capo ${this.selectedCapo}, play ${playKey}`;
+        this.songChartMeta.textContent = `${source}${displayChords.length} chords • Song key ${songKey} • Capo ${this.selectedCapo}, play ${playKey}`;
         this.playChartBtn.disabled = displayChords.length === 0;
 
         if (uniqueChords.length > 0) {

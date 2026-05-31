@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260518b">
+    <link rel="stylesheet" href="style.css?v=20260531">
 </head>
 <body>
     <div class="app-container">
@@ -147,8 +147,20 @@
                         <option>B</option>
                     </select>
 
+                    <div class="control-label">Imported mode</div>
+                    <div class="key-mode-toggle" id="source-key-mode">
+                        <button type="button" data-quality="">Major</button>
+                        <button type="button" data-quality="m">Minor</button>
+                    </div>
+
                     <div class="control-label">Song key</div>
                     <div class="key-button-grid" id="song-key-buttons"></div>
+
+                    <div class="control-label">Song mode</div>
+                    <div class="key-mode-toggle" id="song-key-mode">
+                        <button type="button" data-quality="">Major</button>
+                        <button type="button" data-quality="m">Minor</button>
+                    </div>
 
                     <div class="control-label">Capo / Play</div>
                     <div class="capo-button-grid" id="capo-buttons"></div>
@@ -165,6 +177,6 @@
             <p>Built with Web Audio API</p>
         </footer>
     </div>
-    <script src="app.js?v=20260518b"></script>
+    <script src="app.js?v=20260531"></script>
 </body>
 </html>
